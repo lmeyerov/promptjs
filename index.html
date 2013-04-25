@@ -1,0 +1,19 @@
+<html>
+<head>
+<!-- <script src="d.js"></script> -->
+<script>VERBOSE = false; </script>
+<script src="p.js"></script>
+<script src="pc.js"></script>
+<script src="p_tests.js"></script>
+</head>
+<body>
+	<h1>Tests passed: <script>document.write(success);</script></h1>
+	<h2>Scheduler: <script>document.write(DEFSCHED.toString().split(" ")[1])</script></h2>
+	<h2>Tests</h2>
+	<ul>
+	<script>
+		for (var i in window) if (i.substring(0,4) == "test") document.write('<li>' + i + "</li>"); 
+	</script>
+	</ul>
+</body>
+</html>
