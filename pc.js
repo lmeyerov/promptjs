@@ -1,3 +1,9 @@
+try {
+	P = require('./p.js').P;
+} catch (e) {  }
+
+
+
 /*
  Combinators (.methods):
    .pipe(f :: a -> b) => P  synchronous application of f on parent resolution
@@ -18,6 +24,8 @@
       Ex:   P().unit({x: ['a','b']}).dot("x.1") ~= P().unit('b')
 */
 //=============================
+
+P.prototype.source = function () { return new (this.constructor)(this.sched); };
 
 //Stream processing
 P.prototype.join = function (/* ... */) {
@@ -79,11 +87,29 @@ P.prototype.merge = function (/* ... */) {
 				if (arr[0] == null) {
 					arr = [new Array(i + 1), arr[1]];
 				}
-				if (VERBOSE) console.info(arr[0].concat(arr[1]),'ret');
+				//if (VERBOSE) console.info(arr[0].concat(arr[1]),'ret');
 				return arr[0].concat(arr[1]); });
 		}, this.pipe(function (v) { return [v]; }));
-}
+};
 
+P.prototype.mergeFirst = function () {
+	return this.merge.apply(this, Array.prototype.slice.apply(arguments)).pipe(function (arr) {
+		for (var i = 0; i < arr.length; i++)
+			if (arr[i]) return arr[i]; //FIXME tagged?
+	});
+};
+
+P.prototype.mergeLast = function () {
+	return this.merge.apply(this, Array.prototype.slice.apply(arguments)).pipe(function (arr) {
+		for (var i = arr.length - 1; i >= 0; i--) if (arr[i]) return arr[i];
+	});
+};
+
+P.prototype.tag = function (v) {
+	return this.pipe(function () { return v; });
+};
+
+/*
 P.prototype.snapshot = function (p) {
 	//FIXME
 	throw 'TODO implement ("then" was deprecated)';
@@ -94,9 +120,11 @@ P.prototype.snapshot = function (p) {
 				function (err) { continuation(err); });
 		});
 };
+*/
 
 
 //===========================================================================
+
 
 //Combinators: error handling
 P.prototype.pipe = function (f) {
@@ -110,17 +138,17 @@ P.prototype.pipe = function (f) {
 		} else return f.call(this, taggedV.val);
 	});			
 };
-P.prototype.pipeErr = function (f) {
-	if (!f) f = function (v) { return v; };
-	return this.bind(function (taggedV) { 
-		if (taggedV.hasOwnProperty('err')) return f.call(this, taggedV.err);
-		else if (taggedV.constructor == Array) {
-			if (taggedV[0] && taggedV[0].hasOwnProperty('err')) return f.call(this, taggedV[0].err);
-			else if (taggedV[1] && taggedV[1].hasOwnProperty('err')) return f.call(taggedV[1].err);
-			else throw [taggedV[0] ? taggedV[0].val : null, taggedV[1] ? taggedV[1].val : null];
-		} else throw taggedV.val;
-	});			
-};
+
+P.prototype.flipErr = function () {
+	return this.bind(function (taggedV) {
+		if (taggedV.hasOwnProperty('err')) return taggedV.err;
+		else throw taggedV.val;
+	});
+}
+
+
+P.prototype.pipeErr = function (f) { return this.flipErr().pipe(f); };
+
 
 P.prototype.pipeFlat = function (f) {
 	return this.pipe(function (arr) {		
@@ -154,6 +182,24 @@ P.prototype.print = function (lbl) { //purely side-effect; returns original
 	return this;
 };
 
+var timers = {};
+P.prototype.timer = function (lbl) {
+	if (!lbl) lbl = "__timer";
+	this.pipe(function (v) {
+		if (!timers[lbl]) {
+			timers[lbl] = new Date().getTime();
+			console.log("start timer", lbl);
+		} else {
+			console.log(lbl, (new Date().getTime() - timers[lbl])/1000.0 + "s");
+			delete timers[lbl];
+		}});
+	return this;		
+};
+
+P.prototype.toggleVerbose = function () {
+	return this.pipe(function (v) { VERBOSE = !VERBOSE; return v; });
+}
+
 P.prototype.dot = function (expr) {
 	function dot(expr) {
 		return function (obj) {
@@ -166,4 +212,14 @@ P.prototype.dot = function (expr) {
 	return this.pipe(dot(expr));
 };
 
+Function.prototype.p = function (p) {
+	return p.pipe(this);
+}
+
 if (VERBOSE) console.log('===created plib===');
+
+try {
+	exports.P = P;
+} catch (e) {
+
+}
