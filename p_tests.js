@@ -307,6 +307,19 @@ function testBindOutputFlat () {
 
 	if (!out || out.val != 10) throw arguments.callee;
 }
+
+function testPipeChain () {
+	var out = 0;
+	
+	var a = P();
+	a.pipe().pipe(function (v) { return v + 1; }).pipe(function (v) { out += v; });
+	a.resolve(10);
+	a.resolve(20);
+	a.resolve(30);
+	
+	if (out != 63) throw arguments.callee;
+}
+
 function testUnitMono () {
 	var out = 0;
 	
@@ -594,13 +607,13 @@ success = (function () {
 
 	var runTests = function () {
 		tests.map(function (test) {
-			if (VERBOSE) console.clear();
+//			if (VERBOSE) console.clear();
 			if (VERBOSE) console.log('==== ' + test.toString().split(" ")[1] + ' ====');
 			test();
 			if (VERBOSE) console.log('passed', test.toString().split(" ")[1]);
 		});
 		if (VERBOSE) {
-			console.clear();
+//			console.clear();
 			console.log('==unit tests passed==');
 		}
 		return true;

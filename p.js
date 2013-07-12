@@ -1,4 +1,4 @@
-if (!window.hasOwnProperty('VERBOSE')) VERBOSE = false;
+if (!this.hasOwnProperty('VERBOSE')) VERBOSE = false;
 
 /***
 
@@ -164,7 +164,7 @@ function TopologicalSched () {
 			sink.level = sourceLevel + 1;
 //			console.log('raise', sink.src.id, 'to', sink.level);
 			sink.flowsTo.forEach(function (s) { 
-				console.warn('recursive update'); //FIXME cycle check?
+//				console.warn('recursive update'); //FIXME cycle check?
 				res += updateLevels(s, sink); 
 			});
 		}
@@ -197,6 +197,7 @@ function S (Parent, optDefV /* used by unit */) {
 	if (!Parent) {
 		Parent = this;
 		this.sched = DEFSCHEDINSTANCE;
+		if (VERBOSE) console.log('P sched', DEFSCHEDINSTANCE.toString().split(" ")[1]);
 	}
 	this.sched = Parent.sched;
 	this.id = id++;
@@ -221,7 +222,7 @@ function S (Parent, optDefV /* used by unit */) {
 		var dispatch = function (src) { 
 //			console.log('dispatch', src.id, '=>', res.id);
 			if (src === ret1) { /* console.log('skip, handled by bind', src.id, '=>', res.id); */ /* handled by ret1.bind(...) */ }
-			else if (src == self) { //src === self
+			else if (src === self) { //src === self
 				var oldRet1 = ret1;
 				ret1 = f.call(res, state.ret);
 				if ((oldRet1 === ret1) && (ret1 instanceof res.constructor)) {
@@ -242,7 +243,7 @@ function S (Parent, optDefV /* used by unit */) {
 					}				
 				}				
 			} else {
-				throw ('unexpected other src', src.id, self.id, src == self, src, self);
+				console.error('internal err; unexpected other src', src.id, self.id, src === self, src, self);
 			}
 		};
 		this.sched.bind(res, dispatch);
@@ -333,18 +334,27 @@ function P(boundTo /* optional (used by bind) */, optDefV /* optional (used by u
 		return new (this.constructor)(this.__q.bind(function (taggedV) {
 			try { 
 				var val = f.call(self, taggedV);
-				return  ((val instanceof self.constructor) 
+				var res =  ((val instanceof self.constructor) 
 					  && (val.constructor === self.constructor)) ?
 					val.__q : {val: val};
-			} catch (e) { return {err: e}; }			
+				if (VERBOSE) console.log('progress', res);
+				return res;
+			} catch (e) { 
+				if (VERBOSE) console.error('error', e);
+				return {err: e}; 
+			}			
 		}));
 	};
 	//synchronous!
 	this.unit = function (v) { return new (this.constructor)(null, {val: {val: v}}) };
-	this.merge2 = function (b) { return new (this.constructor)(this.__q.merge2(b.__q)); };
+	this.merge2 = function (b) { return new (this.constructor)(this.__q.merge2(b.__q)); }; //FIXME should expose errs
 }
 P.prototype = new S();
 P.prototype.constructor = P;
 
 if (VERBOSE) console.log('===== created P =====');
 
+try {
+	exports.P = P;	
+	exports.S = S;
+} catch (e) { }
